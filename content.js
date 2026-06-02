@@ -36,6 +36,7 @@ const ui_icon_define = {
     add_timeline_column:"icon/tl_column.svg",
     add_notification_column:"icon/notice_column.svg",
     add_explore_column:"icon/exp_column.svg",
+    add_list_column:"icon/list_column.svg",
     column_single_rack:"icon/single_view.svg",
     column_second_rack:"icon/second_view.svg",
     profile_save:"icon/profile_save.svg",
@@ -361,6 +362,91 @@ function run(settings){
         background-image: url(${chrome.runtime.getURL(ui_icon_define.add_explore_column)});
         height: 69%;
         width: 69%;
+    }
+    .dsp_btn_add_list_img{
+        filter: brightness(0) saturate(100%) invert(11%) sepia(16%) saturate(13%) hue-rotate(322deg) brightness(107%) contrast(80%);
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-image: url(${chrome.runtime.getURL(ui_icon_define.add_list_column)});
+        height: 69%;
+        width: 69%;
+    }
+    #opd_list_picker_overlay{
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .opd_list_picker_dialog{
+        background: white;
+        width: 480px;
+        max-width: 90%;
+        max-height: 85%;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        color: #0f1419;
+    }
+    .opd_list_picker_header{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid #eff3f4;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    .opd_list_picker_close{
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        font-size: 1.2rem;
+        line-height: 1;
+        padding: 4px 8px;
+        border-radius: 50%;
+    }
+    .opd_list_picker_close:hover{
+        background: #eff3f4;
+    }
+    .opd_list_picker_body{
+        overflow-y: auto;
+        padding: 8px 0;
+        min-height: 120px;
+    }
+    .opd_list_picker_status{
+        padding: 16px;
+        text-align: center;
+        color: #536471;
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+    }
+    .opd_list_picker_item{
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 12px 16px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #0f1419;
+        box-sizing: border-box;
+    }
+    .opd_list_picker_item:hover{
+        background: #eff3f4;
+    }
+    .opd_list_picker_item .opd_list_picker_item_sub{
+        display: block;
+        font-size: 0.8rem;
+        color: #536471;
     }
     .dsp_btn_second_rack_img{
         filter: brightness(0) saturate(100%) invert(11%) sepia(16%) saturate(13%) hue-rotate(322deg) brightness(107%) contrast(80%);
@@ -758,7 +844,7 @@ function run(settings){
     let ins_html = document.createElement("div");
     ins_html.id = "opd_main_element";
     ins_html.style = "position: fixed;z-index: 999999;top:0;width: 100%;height: 100%;background: white;display: flex;flex-direction: row;overflow: hidden;";
-    let side_bar = `<section class="dsp_column" style="position:fixed;z-index:999;height:98%;"><div draggable="false" class="dsp_column_draggable_false" opd_column_type="dsp_column" opd_column_width="%column_width_num%" style="height:100%;min-width: 60px;max-width: 60px;text-align: center;background-color: white;"><div class="main_bar_functions"><div class="opd_ui_logo_parent" title="${i18n_message("ui_sidebar_logo_title", [manifest.version])}"><div class="opd_ui_logo"></div><span class="opd_version_span">${manifest.version}</span></div><hr><p class="opd_debug_menu">${i18n_message("ui_debug_menu_label")}<br><input type="button" id="init_settings" value="${i18n_message("ui_button_init_settings")}" /><br><input type="button" id="profile_load_save" value="${i18n_message("ui_button_profile_loader")}" /><br><input type="button" id="dnr_reload" value="${i18n_message("ui_button_dnr_reload")}" /><br><input type="button" id="ext_reload" value="${i18n_message("ui_button_ext_reload")}" /><br><div id="api_limit_status">${i18n_message("ui_button_api_label")}</div><hr><div class="dsp_btn_parent" id="add_post" title="${i18n_message("ui_add_post_column_title")}"><div class="dsp_btn_add_post_img"></div></div><hr><div class="dsp_btn_parent" id="add_timeline" title="${i18n_message("ui_add_timeline_column_title")}"><div class="dsp_btn_add_tl_img"></div></div><div class="dsp_btn_parent" id="add_notify" title="${i18n_message("ui_add_notification_column_title")}"><div class="dsp_btn_add_ntfc_img"></div></div><div class="dsp_btn_parent" id="add_explore" title="${i18n_message("ui_add_explore_column_title")}"><div class="dsp_btn_add_explr_img"></div></div><hr><div class="dsp_btn_parent" title="${i18n_message("ui_toggle_second_rack_title")}" id="second_rack"><div class="dsp_btn_second_rack_img"></div></div><hr><div class="dsp_btn_parent" title="${i18n_message("ui_profile_save_title")}" id="profile_save"><div class="dsp_btn_profile_add_img"></div></div><div class="dsp_btn_parent" title="${i18n_message("ui_profile_delete_title")}" id="profile_delete"><div class="dsp_btn_profile_delete_img"></div></div>${profile_list_html}</p></div></div></section><section draggable="false" class="dsp_column_draggable_false dsp_column"><div opd_column_type="main_bar_empty_column" id="main_bar_empty_column" style="height:100%;min-width: 60px;max-width: 60px;"></div></section>`;
+    let side_bar = `<section class="dsp_column" style="position:fixed;z-index:999;height:98%;"><div draggable="false" class="dsp_column_draggable_false" opd_column_type="dsp_column" opd_column_width="%column_width_num%" style="height:100%;min-width: 60px;max-width: 60px;text-align: center;background-color: white;"><div class="main_bar_functions"><div class="opd_ui_logo_parent" title="${i18n_message("ui_sidebar_logo_title", [manifest.version])}"><div class="opd_ui_logo"></div><span class="opd_version_span">${manifest.version}</span></div><hr><p class="opd_debug_menu">${i18n_message("ui_debug_menu_label")}<br><input type="button" id="init_settings" value="${i18n_message("ui_button_init_settings")}" /><br><input type="button" id="profile_load_save" value="${i18n_message("ui_button_profile_loader")}" /><br><input type="button" id="dnr_reload" value="${i18n_message("ui_button_dnr_reload")}" /><br><input type="button" id="ext_reload" value="${i18n_message("ui_button_ext_reload")}" /><br><div id="api_limit_status">${i18n_message("ui_button_api_label")}</div><hr><div class="dsp_btn_parent" id="add_post" title="${i18n_message("ui_add_post_column_title")}"><div class="dsp_btn_add_post_img"></div></div><hr><div class="dsp_btn_parent" id="add_timeline" title="${i18n_message("ui_add_timeline_column_title")}"><div class="dsp_btn_add_tl_img"></div></div><div class="dsp_btn_parent" id="add_notify" title="${i18n_message("ui_add_notification_column_title")}"><div class="dsp_btn_add_ntfc_img"></div></div><div class="dsp_btn_parent" id="add_explore" title="${i18n_message("ui_add_explore_column_title")}"><div class="dsp_btn_add_explr_img"></div></div><div class="dsp_btn_parent" id="add_list" title="${i18n_message("ui_add_list_column_title")}"><div class="dsp_btn_add_list_img"></div></div><hr><div class="dsp_btn_parent" title="${i18n_message("ui_toggle_second_rack_title")}" id="second_rack"><div class="dsp_btn_second_rack_img"></div></div><hr><div class="dsp_btn_parent" title="${i18n_message("ui_profile_save_title")}" id="profile_save"><div class="dsp_btn_profile_add_img"></div></div><div class="dsp_btn_parent" title="${i18n_message("ui_profile_delete_title")}" id="profile_delete"><div class="dsp_btn_profile_delete_img"></div></div>${profile_list_html}</p></div></div></section><section draggable="false" class="dsp_column_draggable_false dsp_column"><div opd_column_type="main_bar_empty_column" id="main_bar_empty_column" style="height:100%;min-width: 60px;max-width: 60px;"></div></section>`;
     //let side_bar = `<section class="dsp_column" style="position:fixed;z-index:999;height:98%;"><div draggable="false" opd_column_type="dsp_column" opd_column_width="%column_width_num%" style="height:100%;min-width: 100px;text-align: center;background-color: white;"><div><p style="margin-top:0;padding-top:1em;">Open-Deck<br>Prototype<br>v${manifest.version}</p><hr><p>Debug<br><input type="button" id="init_settings" value="init settings"/><br><input type="button" id="profile_load_save" value="Profile Load"/><br><input type="button" id="dnr_reload" value="dNR_Reload"/><br><input type="button" id="ext_reload" value="Ext_Reload"/></p><hr><p><input type="button" id="add_timeline" value="Add TimeLine"/> <div class="dsp_btn_parent"><div class="dsp_btn_add_tl_img"></div></div><div class="dsp_btn_parent"><div class="dsp_btn_add_ntfc_img"></div></div><div class="dsp_btn_parent"><div class="dsp_btn_add_explr_img"></div></div> </p><p><input type="button" id="add_notify" value="Add Notification"/></p><p><input type="button" id="add_explore" value="Add Explore"/><hr><input type="button" id="second_rack" value="Second Rack"/><hr><input type="button" id="profile_save" value="Profile_Save"/><br><input type="button" id="profile_delete" value="Profile_Delete"/><br>${profile_list_html}</p></div></div></section><section draggable="false" class="dsp_column"><div opd_column_type="main_bar_empty_column" id="main_bar_empty_column" style="height:100%;min-width: 110px;"></div></section>`;
     let main_column_html = ``;
     let second_column_html = ``;
@@ -1574,6 +1660,111 @@ function run(settings){
         column_close();
         column_settings_save("", last_load_profile);
     });
+    //リストカラム追加(リスト選択ピッカーを開く)
+    document.getElementById("add_list").addEventListener("click", function(){
+        open_list_picker();
+    });
+    //指定したパスでExploreベースのカラムを追加する(リストカラムで使用)
+    function add_explore_column_with_path(open_path){
+        const empty_column = document.querySelector(".dsp_column_emptycolumn");
+        const first_column = empty_column?.closest('div')?.querySelector('section[draggable="true"]');
+        const add_target_column = (is_shift_pressed && first_column) ? first_column : empty_column;
+        if(!add_target_column){ return; }
+        const new_column = default_element["explore"]["html"].replaceAll("%column_save_path%", open_path).replaceAll("%column_num%", create_random_id()).replace("%column_banner_ch%", "").replace("%column_top_bar_ch%", "checked").replace("%column_tw_view_mode%", "0").replaceAll("%column_pinned_save_path%", "").replaceAll("%column_width_num%", "30").replaceAll("%column_auto_reload_ch%", "").replaceAll("%column_auto_reload_time%", "10000");
+        add_target_column.insertAdjacentHTML("beforebegin", new_column);
+        add_target_column.scrollIntoView({behavior: "smooth",inline: "end"});
+        const all_webview = document.querySelectorAll('#main_rack_element iframe[opd_init_webview]');
+        append_object_css("add_column", all_webview);
+        column_dd();
+        column_close();
+        column_settings_save("", last_load_profile);
+    }
+    //ログイン中ユーザーのハンドルを取得(リスト一覧ページのURL生成に使用)
+    function get_current_user_handle(){
+        const profile_href = document.querySelector('[data-testid="AppTabBar_Profile_Link"]')?.getAttribute("href");
+        if(profile_href && profile_href.startsWith("/")){
+            const handle = profile_href.replace(/^\//, "").split(/[\/?#]/)[0];
+            if(handle){ return handle; }
+        }
+        return null;
+    }
+    //リスト選択ピッカーを開く
+    function open_list_picker(){
+        //多重起動防止
+        if(document.getElementById("opd_list_picker_overlay")){ return; }
+        const handle = get_current_user_handle();
+        const lists_path = handle ? `/${handle}/lists` : "/home";
+        const overlay = document.createElement("div");
+        overlay.id = "opd_list_picker_overlay";
+        overlay.innerHTML = `<div class="opd_list_picker_dialog"><div class="opd_list_picker_header"><span>${i18n_message("ui_list_picker_header")}</span><button type="button" class="opd_list_picker_close" title="${i18n_message("ui_list_picker_cancel")}">✕</button></div><div class="opd_list_picker_body"><div class="opd_list_picker_status">${i18n_message("ui_list_picker_loading")}</div></div></div>`;
+        document.body.appendChild(overlay);
+        const close_picker = function(){ overlay.remove(); };
+        overlay.querySelector(".opd_list_picker_close").addEventListener("click", close_picker);
+        overlay.addEventListener("click", function(e){ if(e.target === overlay){ close_picker(); } });
+        const body = overlay.querySelector(".opd_list_picker_body");
+        //リスト一覧をスクレイピングするための非表示iframe
+        const loader = document.createElement("iframe");
+        loader.style = "position:absolute;width:0;height:0;border:0;visibility:hidden;";
+        loader.src = `https://x.com${lists_path}`;
+        overlay.appendChild(loader);
+        let resolved = false;
+        //iframe内のリスト一覧ページからリストを抽出して描画
+        const render_lists = function(){
+            let lists = [];
+            try{
+                const anchors = loader.contentDocument.querySelectorAll('a[href*="/lists/"]');
+                const seen = {};
+                anchors.forEach(function(a){
+                    const href = a.getAttribute("href") || "";
+                    const m = href.match(/\/lists\/(\d+)/);
+                    if(!m){ return; }
+                    const id = m[1];
+                    if(seen[id]){ return; }
+                    const name = (a.textContent || "").trim().split("\n")[0].trim();
+                    seen[id] = true;
+                    lists.push({path: `/i/lists/${id}`, name: name || `/i/lists/${id}`});
+                });
+            }catch(err){
+                //クロスオリジン等で取得に失敗した場合
+                return false;
+            }
+            if(lists.length === 0){ return false; }
+            resolved = true;
+            let html = "";
+            lists.forEach(function(list){
+                const safe_name = list.name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                html += `<button type="button" class="opd_list_picker_item" data-opd-list-path="${list.path}"><span>${safe_name}</span><span class="opd_list_picker_item_sub">${list.path}</span></button>`;
+            });
+            body.innerHTML = html;
+            body.querySelectorAll(".opd_list_picker_item").forEach(function(btn){
+                btn.addEventListener("click", function(){
+                    add_explore_column_with_path(this.getAttribute("data-opd-list-path"));
+                    close_picker();
+                });
+            });
+            return true;
+        };
+        loader.addEventListener("load", function(){
+            //SPAのため一覧描画を待ちつつ一定回数取得を試みる
+            let attempts = 0;
+            const max_attempts = 40; //約20秒
+            const timer = setInterval(function(){
+                attempts++;
+                if(resolved || !document.body.contains(overlay)){
+                    clearInterval(timer);
+                    return;
+                }
+                if(render_lists()){
+                    clearInterval(timer);
+                    return;
+                }
+                if(attempts >= max_attempts){
+                    clearInterval(timer);
+                    body.innerHTML = `<div class="opd_list_picker_status">${i18n_message("ui_list_picker_empty")}</div>`;
+                }
+            }, 500);
+        });
+    }
     //プロファイル保存ボタン
     document.getElementById("profile_save").addEventListener("click", function(){
         if(confirm(i18n_message("msg_profile_save_confirm"))){

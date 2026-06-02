@@ -41,6 +41,21 @@
   "ui_add_explore_column_title": {
     "message": "Explore(ユニバーサル)カラム追加"
   },
+  "ui_add_list_column_title": {
+    "message": "リストカラム追加"
+  },
+  "ui_list_picker_header": {
+    "message": "追加するリストを選択"
+  },
+  "ui_list_picker_loading": {
+    "message": "リストを読み込み中..."
+  },
+  "ui_list_picker_empty": {
+    "message": "リストが見つかりませんでした。\nリストを作成・フォローしているか確認してください。"
+  },
+  "ui_list_picker_cancel": {
+    "message": "キャンセル"
+  },
   "ui_toggle_second_rack_title": {
     "message": "カラム段切り替え"
   },

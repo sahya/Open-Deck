@@ -41,6 +41,21 @@
   "ui_add_explore_column_title": {
     "message": "Add Explore (universal) column"
   },
+  "ui_add_list_column_title": {
+    "message": "Add list column"
+  },
+  "ui_list_picker_header": {
+    "message": "Select a list to add"
+  },
+  "ui_list_picker_loading": {
+    "message": "Loading lists..."
+  },
+  "ui_list_picker_empty": {
+    "message": "No lists found.\nMake sure you have created or followed lists."
+  },
+  "ui_list_picker_cancel": {
+    "message": "Cancel"
+  },
   "ui_toggle_second_rack_title": {
     "message": "Toggle multi-row layout"
   },
