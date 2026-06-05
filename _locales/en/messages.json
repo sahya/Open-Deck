@@ -41,6 +41,27 @@
   "ui_add_explore_column_title": {
     "message": "Add Explore (universal) column"
   },
+  "ui_add_list_column_title": {
+    "message": "Add list column"
+  },
+  "ui_list_picker_header": {
+    "message": "Select a list to add"
+  },
+  "ui_list_picker_hint": {
+    "message": "Open the list you want in the view below, then press \"Add this list\"."
+  },
+  "ui_list_picker_add_current": {
+    "message": "Add this list"
+  },
+  "ui_list_picker_none": {
+    "message": "No list selected"
+  },
+  "ui_list_picker_current": {
+    "message": "Selected: $1"
+  },
+  "ui_list_picker_cancel": {
+    "message": "Cancel"
+  },
   "ui_toggle_second_rack_title": {
     "message": "Toggle multi-row layout"
   },

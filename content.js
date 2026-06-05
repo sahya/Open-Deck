@@ -36,6 +36,7 @@ const ui_icon_define = {
     add_timeline_column:"icon/tl_column.svg",
     add_notification_column:"icon/notice_column.svg",
     add_explore_column:"icon/exp_column.svg",
+    add_list_column:"icon/list_column.svg",
     column_single_rack:"icon/single_view.svg",
     column_second_rack:"icon/second_view.svg",
     profile_save:"icon/profile_save.svg",
@@ -361,6 +362,110 @@ function run(settings){
         background-image: url(${chrome.runtime.getURL(ui_icon_define.add_explore_column)});
         height: 69%;
         width: 69%;
+    }
+    .dsp_btn_add_list_img{
+        filter: brightness(0) saturate(100%) invert(11%) sepia(16%) saturate(13%) hue-rotate(322deg) brightness(107%) contrast(80%);
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-image: url(${chrome.runtime.getURL(ui_icon_define.add_list_column)});
+        height: 69%;
+        width: 69%;
+    }
+    #opd_list_picker_overlay{
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .opd_list_picker_dialog{
+        background: white;
+        width: 640px;
+        max-width: 92%;
+        height: 85%;
+        max-height: 85%;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        color: #0f1419;
+    }
+    .opd_list_picker_header{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid #eff3f4;
+        font-weight: bold;
+        font-size: 1.1rem;
+        flex: 0 0 auto;
+    }
+    .opd_list_picker_close{
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        font-size: 1.2rem;
+        line-height: 1;
+        padding: 4px 8px;
+        border-radius: 50%;
+    }
+    .opd_list_picker_close:hover{
+        background: #eff3f4;
+    }
+    .opd_list_picker_hint{
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        color: #536471;
+        background: #f7f9f9;
+        flex: 0 0 auto;
+    }
+    .opd_list_picker_frame{
+        flex: 1 1 auto;
+        width: 100%;
+        border: 0;
+        min-height: 200px;
+    }
+    .opd_list_picker_footer{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 16px;
+        border-top: 1px solid #eff3f4;
+        flex: 0 0 auto;
+    }
+    .opd_list_picker_selected{
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.9rem;
+        color: #536471;
+    }
+    .opd_list_picker_footer button{
+        cursor: pointer;
+        border-radius: 9999px;
+        border: 1px solid #cfd9de;
+        padding: 8px 16px;
+        font-size: 0.9rem;
+        background: white;
+        color: #0f1419;
+    }
+    .opd_list_picker_add{
+        background: #0f1419 !important;
+        color: white !important;
+        border-color: #0f1419 !important;
+    }
+    .opd_list_picker_add:disabled{
+        background: #8b98a5 !important;
+        border-color: #8b98a5 !important;
+        cursor: default;
     }
     .dsp_btn_second_rack_img{
         filter: brightness(0) saturate(100%) invert(11%) sepia(16%) saturate(13%) hue-rotate(322deg) brightness(107%) contrast(80%);
@@ -758,7 +863,7 @@ function run(settings){
     let ins_html = document.createElement("div");
     ins_html.id = "opd_main_element";
     ins_html.style = "position: fixed;z-index: 999999;top:0;width: 100%;height: 100%;background: white;display: flex;flex-direction: row;overflow: hidden;";
-    let side_bar = `<section class="dsp_column" style="position:fixed;z-index:999;height:98%;"><div draggable="false" class="dsp_column_draggable_false" opd_column_type="dsp_column" opd_column_width="%column_width_num%" style="height:100%;min-width: 60px;max-width: 60px;text-align: center;background-color: white;"><div class="main_bar_functions"><div class="opd_ui_logo_parent" title="${i18n_message("ui_sidebar_logo_title", [manifest.version])}"><div class="opd_ui_logo"></div><span class="opd_version_span">${manifest.version}</span></div><hr><p class="opd_debug_menu">${i18n_message("ui_debug_menu_label")}<br><input type="button" id="init_settings" value="${i18n_message("ui_button_init_settings")}" /><br><input type="button" id="profile_load_save" value="${i18n_message("ui_button_profile_loader")}" /><br><input type="button" id="dnr_reload" value="${i18n_message("ui_button_dnr_reload")}" /><br><input type="button" id="ext_reload" value="${i18n_message("ui_button_ext_reload")}" /><br><div id="api_limit_status">${i18n_message("ui_button_api_label")}</div><hr><div class="dsp_btn_parent" id="add_post" title="${i18n_message("ui_add_post_column_title")}"><div class="dsp_btn_add_post_img"></div></div><hr><div class="dsp_btn_parent" id="add_timeline" title="${i18n_message("ui_add_timeline_column_title")}"><div class="dsp_btn_add_tl_img"></div></div><div class="dsp_btn_parent" id="add_notify" title="${i18n_message("ui_add_notification_column_title")}"><div class="dsp_btn_add_ntfc_img"></div></div><div class="dsp_btn_parent" id="add_explore" title="${i18n_message("ui_add_explore_column_title")}"><div class="dsp_btn_add_explr_img"></div></div><hr><div class="dsp_btn_parent" title="${i18n_message("ui_toggle_second_rack_title")}" id="second_rack"><div class="dsp_btn_second_rack_img"></div></div><hr><div class="dsp_btn_parent" title="${i18n_message("ui_profile_save_title")}" id="profile_save"><div class="dsp_btn_profile_add_img"></div></div><div class="dsp_btn_parent" title="${i18n_message("ui_profile_delete_title")}" id="profile_delete"><div class="dsp_btn_profile_delete_img"></div></div>${profile_list_html}</p></div></div></section><section draggable="false" class="dsp_column_draggable_false dsp_column"><div opd_column_type="main_bar_empty_column" id="main_bar_empty_column" style="height:100%;min-width: 60px;max-width: 60px;"></div></section>`;
+    let side_bar = `<section class="dsp_column" style="position:fixed;z-index:999;height:98%;"><div draggable="false" class="dsp_column_draggable_false" opd_column_type="dsp_column" opd_column_width="%column_width_num%" style="height:100%;min-width: 60px;max-width: 60px;text-align: center;background-color: white;"><div class="main_bar_functions"><div class="opd_ui_logo_parent" title="${i18n_message("ui_sidebar_logo_title", [manifest.version])}"><div class="opd_ui_logo"></div><span class="opd_version_span">${manifest.version}</span></div><hr><p class="opd_debug_menu">${i18n_message("ui_debug_menu_label")}<br><input type="button" id="init_settings" value="${i18n_message("ui_button_init_settings")}" /><br><input type="button" id="profile_load_save" value="${i18n_message("ui_button_profile_loader")}" /><br><input type="button" id="dnr_reload" value="${i18n_message("ui_button_dnr_reload")}" /><br><input type="button" id="ext_reload" value="${i18n_message("ui_button_ext_reload")}" /><br><div id="api_limit_status">${i18n_message("ui_button_api_label")}</div><hr><div class="dsp_btn_parent" id="add_post" title="${i18n_message("ui_add_post_column_title")}"><div class="dsp_btn_add_post_img"></div></div><hr><div class="dsp_btn_parent" id="add_timeline" title="${i18n_message("ui_add_timeline_column_title")}"><div class="dsp_btn_add_tl_img"></div></div><div class="dsp_btn_parent" id="add_notify" title="${i18n_message("ui_add_notification_column_title")}"><div class="dsp_btn_add_ntfc_img"></div></div><div class="dsp_btn_parent" id="add_explore" title="${i18n_message("ui_add_explore_column_title")}"><div class="dsp_btn_add_explr_img"></div></div><div class="dsp_btn_parent" id="add_list" title="${i18n_message("ui_add_list_column_title")}"><div class="dsp_btn_add_list_img"></div></div><hr><div class="dsp_btn_parent" title="${i18n_message("ui_toggle_second_rack_title")}" id="second_rack"><div class="dsp_btn_second_rack_img"></div></div><hr><div class="dsp_btn_parent" title="${i18n_message("ui_profile_save_title")}" id="profile_save"><div class="dsp_btn_profile_add_img"></div></div><div class="dsp_btn_parent" title="${i18n_message("ui_profile_delete_title")}" id="profile_delete"><div class="dsp_btn_profile_delete_img"></div></div>${profile_list_html}</p></div></div></section><section draggable="false" class="dsp_column_draggable_false dsp_column"><div opd_column_type="main_bar_empty_column" id="main_bar_empty_column" style="height:100%;min-width: 60px;max-width: 60px;"></div></section>`;
     //let side_bar = `<section class="dsp_column" style="position:fixed;z-index:999;height:98%;"><div draggable="false" opd_column_type="dsp_column" opd_column_width="%column_width_num%" style="height:100%;min-width: 100px;text-align: center;background-color: white;"><div><p style="margin-top:0;padding-top:1em;">Open-Deck<br>Prototype<br>v${manifest.version}</p><hr><p>Debug<br><input type="button" id="init_settings" value="init settings"/><br><input type="button" id="profile_load_save" value="Profile Load"/><br><input type="button" id="dnr_reload" value="dNR_Reload"/><br><input type="button" id="ext_reload" value="Ext_Reload"/></p><hr><p><input type="button" id="add_timeline" value="Add TimeLine"/> <div class="dsp_btn_parent"><div class="dsp_btn_add_tl_img"></div></div><div class="dsp_btn_parent"><div class="dsp_btn_add_ntfc_img"></div></div><div class="dsp_btn_parent"><div class="dsp_btn_add_explr_img"></div></div> </p><p><input type="button" id="add_notify" value="Add Notification"/></p><p><input type="button" id="add_explore" value="Add Explore"/><hr><input type="button" id="second_rack" value="Second Rack"/><hr><input type="button" id="profile_save" value="Profile_Save"/><br><input type="button" id="profile_delete" value="Profile_Delete"/><br>${profile_list_html}</p></div></div></section><section draggable="false" class="dsp_column"><div opd_column_type="main_bar_empty_column" id="main_bar_empty_column" style="height:100%;min-width: 110px;"></div></section>`;
     let main_column_html = ``;
     let second_column_html = ``;
@@ -1023,6 +1128,16 @@ function run(settings){
                     }else{
                         //console.log("else")
                         this.contentWindow.document.querySelector('head style[opd_top_visible_css]').textContent = ``;
+                    }
+
+                    //リストカラム用ヘッダー非表示CSS(バナー画像・リスト情報・編集ボタン等)
+                    if(this.contentWindow.document.querySelector('head style[opd_list_header_css]') == null){
+                        this.contentWindow.document.querySelector("head").insertAdjacentHTML("beforeend", `<style opd_list_header_css></style>`);
+                    }
+                    if((this.closest("div[opd_column_type]").getAttribute("opd_explore_path") || "").startsWith("/i/lists/")){
+                        this.contentWindow.document.querySelector('head style[opd_list_header_css]').textContent = `div[data-testid="primaryColumn"]>div>div:nth-child(1), div[data-testid="primaryColumn"]>div>div:nth-child(2){display:none !important;}`;
+                    }else{
+                        this.contentWindow.document.querySelector('head style[opd_list_header_css]').textContent = ``;
                     }
 
                     //ツイート表示項目設定読み込み適用
@@ -1440,6 +1555,14 @@ function run(settings){
                             element.setAttribute("opd_explore_title", exp_title);
                             //console.log(exp_title);
                             column_settings_save("", last_load_profile);
+                            //リストカラムヘッダーCSS更新
+                            if(exp_object.contentWindow.document.querySelector('head style[opd_list_header_css]') != null){
+                                if(exp_url.pathname.startsWith("/i/lists/")){
+                                    exp_object.contentWindow.document.querySelector('head style[opd_list_header_css]').textContent = `div[data-testid="primaryColumn"]>div>div:nth-child(1), div[data-testid="primaryColumn"]>div>div:nth-child(2){display:none !important;}`;
+                                }else{
+                                    exp_object.contentWindow.document.querySelector('head style[opd_list_header_css]').textContent = ``;
+                                }
+                            }
                         }
                     });
                     exp_observer.observe(exp_object.contentWindow.document, {childList: true, subtree: true});
@@ -1574,6 +1697,96 @@ function run(settings){
         column_close();
         column_settings_save("", last_load_profile);
     });
+    //リストカラム追加(リスト選択ピッカーを開く)
+    document.getElementById("add_list").addEventListener("click", function(){
+        open_list_picker();
+    });
+    //HTML属性値用のエスケープ
+    function opd_attr_escape(str){
+        return (str || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    //指定したパス/タイトルでExploreベースのカラムを追加する(リストカラムで使用)
+    function add_explore_column_with_path(open_path, open_title){
+        const empty_column = document.querySelector(".dsp_column_emptycolumn");
+        const first_column = empty_column?.closest('div')?.querySelector('section[draggable="true"]');
+        const add_target_column = (is_shift_pressed && first_column) ? first_column : empty_column;
+        if(!add_target_column){ return; }
+        //属性破壊や保存→再読込時の不整合を避けるため二重引用符は除去してから格納する
+        const save_title = opd_attr_escape((open_title || "").replace(/"/g, "").trim());
+        const new_column = default_element["explore"]["html"].replaceAll("%column_save_path%", open_path).replaceAll("%column_num%", create_random_id()).replace("%column_banner_ch%", "").replace("%column_top_bar_ch%", "checked").replace("%column_tw_view_mode%", "0").replace("%column_pinned_ch%", "").replaceAll("%column_pinned_save_path%", "").replaceAll("%column_save_title%", save_title).replaceAll("%column_width_num%", "30").replaceAll("%column_auto_reload_ch%", "").replaceAll("%column_auto_reload_time%", "10000");
+        add_target_column.insertAdjacentHTML("beforebegin", new_column);
+        add_target_column.scrollIntoView({behavior: "smooth",inline: "end"});
+        const all_webview = document.querySelectorAll('#main_rack_element iframe[opd_init_webview]');
+        append_object_css("add_column", all_webview);
+        column_dd();
+        column_close();
+        column_settings_save("", last_load_profile);
+    }
+    //ログイン中ユーザーのハンドルを取得(リスト一覧ページのURL生成に使用)
+    function get_current_user_handle(){
+        const profile_href = document.querySelector('[data-testid="AppTabBar_Profile_Link"]')?.getAttribute("href");
+        if(profile_href && profile_href.startsWith("/")){
+            const handle = profile_href.replace(/^\//, "").split(/[\/?#]/)[0];
+            if(handle){ return handle; }
+        }
+        return null;
+    }
+    //パスからリストID(/i/lists/{id} または /{handle}/lists/{id})を取り出す
+    function extract_list_id_from_path(pathname){
+        const m = (pathname || "").match(/\/lists\/(\d+)/);
+        return m ? m[1] : null;
+    }
+    //リスト選択ピッカーを開く。
+    //隠しiframeのスクレイピングはブラウザのレンダリングスロットリングやSPAの仮想化で不安定なため、
+    //Exploreカラムと同じ「操作可能なiframe」方式を採用。ユーザーが追加したいリストを開いてボタンで確定する。
+    function open_list_picker(){
+        //多重起動防止
+        if(document.getElementById("opd_list_picker_overlay")){ return; }
+        const handle = get_current_user_handle();
+        const lists_path = handle ? `/${handle}/lists` : "/home";
+        const overlay = document.createElement("div");
+        overlay.id = "opd_list_picker_overlay";
+        overlay.innerHTML = `<div class="opd_list_picker_dialog"><div class="opd_list_picker_header"><span>${i18n_message("ui_list_picker_header")}</span><button type="button" class="opd_list_picker_close" title="${i18n_message("ui_list_picker_cancel")}">✕</button></div><div class="opd_list_picker_hint">${i18n_message("ui_list_picker_hint")}</div><iframe class="opd_list_picker_frame" allow="fullscreen" src="${location.origin}${lists_path}"></iframe><div class="opd_list_picker_footer"><span class="opd_list_picker_selected">${i18n_message("ui_list_picker_none")}</span><span><button type="button" class="opd_list_picker_add" disabled>${i18n_message("ui_list_picker_add_current")}</button> <button type="button" class="opd_list_picker_cancel">${i18n_message("ui_list_picker_cancel")}</button></span></div></div>`;
+        document.body.appendChild(overlay);
+        let poll = null;
+        const close_picker = function(){
+            if(poll){ clearInterval(poll); poll = null; }
+            overlay.remove();
+        };
+        overlay.querySelector(".opd_list_picker_close").addEventListener("click", close_picker);
+        overlay.querySelector(".opd_list_picker_cancel").addEventListener("click", close_picker);
+        overlay.addEventListener("click", function(e){ if(e.target === overlay){ close_picker(); } });
+        const frame = overlay.querySelector(".opd_list_picker_frame");
+        const selected_label = overlay.querySelector(".opd_list_picker_selected");
+        const add_btn = overlay.querySelector(".opd_list_picker_add");
+        let current = null;
+        //iframeで開いているページがリストかを監視し、確定ボタンの有効/無効と選択中表示を更新する
+        const detect = function(){
+            try{
+                const id = extract_list_id_from_path(frame.contentWindow.location.pathname);
+                if(id){
+                    const title = (frame.contentWindow.document.title || "").replace(/\s*\/\s*(X|Twitter)$/, "").trim();
+                    current = {path: `/i/lists/${id}`, title: title || `/i/lists/${id}`};
+                    add_btn.disabled = false;
+                    selected_label.textContent = i18n_message("ui_list_picker_current", [current.title]);
+                }else{
+                    current = null;
+                    add_btn.disabled = true;
+                    selected_label.textContent = i18n_message("ui_list_picker_none");
+                }
+            }catch(err){
+                //クロスオリジン等(通常は同一オリジンのため発生しない)
+                current = null;
+                add_btn.disabled = true;
+            }
+        };
+        poll = setInterval(detect, 500);
+        add_btn.addEventListener("click", function(){
+            if(!current){ return; }
+            add_explore_column_with_path(current.path, current.title);
+            close_picker();
+        });
+    }
     //プロファイル保存ボタン
     document.getElementById("profile_save").addEventListener("click", function(){
         if(confirm(i18n_message("msg_profile_save_confirm"))){
