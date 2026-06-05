@@ -385,8 +385,9 @@ function run(settings){
     }
     .opd_list_picker_dialog{
         background: white;
-        width: 480px;
-        max-width: 90%;
+        width: 640px;
+        max-width: 92%;
+        height: 85%;
         max-height: 85%;
         border-radius: 12px;
         display: flex;
@@ -403,6 +404,7 @@ function run(settings){
         border-bottom: 1px solid #eff3f4;
         font-weight: bold;
         font-size: 1.1rem;
+        flex: 0 0 auto;
     }
     .opd_list_picker_close{
         cursor: pointer;
@@ -416,37 +418,54 @@ function run(settings){
     .opd_list_picker_close:hover{
         background: #eff3f4;
     }
-    .opd_list_picker_body{
-        overflow-y: auto;
-        padding: 8px 0;
-        min-height: 120px;
-    }
-    .opd_list_picker_status{
-        padding: 16px;
-        text-align: center;
+    .opd_list_picker_hint{
+        padding: 8px 16px;
+        font-size: 0.85rem;
         color: #536471;
-        font-size: 0.9rem;
-        white-space: pre-wrap;
+        background: #f7f9f9;
+        flex: 0 0 auto;
     }
-    .opd_list_picker_item{
-        display: block;
+    .opd_list_picker_frame{
+        flex: 1 1 auto;
         width: 100%;
-        text-align: left;
-        padding: 12px 16px;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        font-size: 1rem;
-        color: #0f1419;
-        box-sizing: border-box;
+        border: 0;
+        min-height: 200px;
     }
-    .opd_list_picker_item:hover{
-        background: #eff3f4;
+    .opd_list_picker_footer{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 16px;
+        border-top: 1px solid #eff3f4;
+        flex: 0 0 auto;
     }
-    .opd_list_picker_item .opd_list_picker_item_sub{
-        display: block;
-        font-size: 0.8rem;
+    .opd_list_picker_selected{
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.9rem;
         color: #536471;
+    }
+    .opd_list_picker_footer button{
+        cursor: pointer;
+        border-radius: 9999px;
+        border: 1px solid #cfd9de;
+        padding: 8px 16px;
+        font-size: 0.9rem;
+        background: white;
+        color: #0f1419;
+    }
+    .opd_list_picker_add{
+        background: #0f1419 !important;
+        color: white !important;
+        border-color: #0f1419 !important;
+    }
+    .opd_list_picker_add:disabled{
+        background: #8b98a5 !important;
+        border-color: #8b98a5 !important;
+        cursor: default;
     }
     .dsp_btn_second_rack_img{
         filter: brightness(0) saturate(100%) invert(11%) sepia(16%) saturate(13%) hue-rotate(322deg) brightness(107%) contrast(80%);
@@ -1694,26 +1713,14 @@ function run(settings){
         }
         return null;
     }
-    //リストセルのリンクから、@ハンドルやメンバー数等のメタ情報を除いたリスト名を抽出する
-    function extract_list_name(anchor){
-        const texts = [];
-        const walker = anchor.ownerDocument.createTreeWalker(anchor, NodeFilter.SHOW_TEXT);
-        let node;
-        while((node = walker.nextNode())){
-            const t = node.textContent.trim();
-            if(t){ texts.push(t); }
-        }
-        for(let i = 0; i < texts.length; i++){
-            const t = texts[i];
-            if(t === "·" || t === "•"){ continue; }
-            if(t.startsWith("@")){ continue; }
-            //"12 members" / "1.2万 メンバー" 等のメンバー数表記を除外(名前が数字始まりの場合は除外しない)
-            if(/^[\d,.]+\s*(k|m|万|億)?\s*(members?|メンバー|人)?$/i.test(t)){ continue; }
-            return t;
-        }
-        return texts[0] || "";
+    //パスからリストID(/i/lists/{id} または /{handle}/lists/{id})を取り出す
+    function extract_list_id_from_path(pathname){
+        const m = (pathname || "").match(/\/lists\/(\d+)/);
+        return m ? m[1] : null;
     }
-    //リスト選択ピッカーを開く
+    //リスト選択ピッカーを開く。
+    //隠しiframeのスクレイピングはブラウザのレンダリングスロットリングやSPAの仮想化で不安定なため、
+    //Exploreカラムと同じ「操作可能なiframe」方式を採用。ユーザーが追加したいリストを開いてボタンで確定する。
     function open_list_picker(){
         //多重起動防止
         if(document.getElementById("opd_list_picker_overlay")){ return; }
@@ -1721,74 +1728,46 @@ function run(settings){
         const lists_path = handle ? `/${handle}/lists` : "/home";
         const overlay = document.createElement("div");
         overlay.id = "opd_list_picker_overlay";
-        overlay.innerHTML = `<div class="opd_list_picker_dialog"><div class="opd_list_picker_header"><span>${i18n_message("ui_list_picker_header")}</span><button type="button" class="opd_list_picker_close" title="${i18n_message("ui_list_picker_cancel")}">✕</button></div><div class="opd_list_picker_body"><div class="opd_list_picker_status">${i18n_message("ui_list_picker_loading")}</div></div></div>`;
+        overlay.innerHTML = `<div class="opd_list_picker_dialog"><div class="opd_list_picker_header"><span>${i18n_message("ui_list_picker_header")}</span><button type="button" class="opd_list_picker_close" title="${i18n_message("ui_list_picker_cancel")}">✕</button></div><div class="opd_list_picker_hint">${i18n_message("ui_list_picker_hint")}</div><iframe class="opd_list_picker_frame" allow="fullscreen" src="${location.origin}${lists_path}"></iframe><div class="opd_list_picker_footer"><span class="opd_list_picker_selected">${i18n_message("ui_list_picker_none")}</span><span><button type="button" class="opd_list_picker_add" disabled>${i18n_message("ui_list_picker_add_current")}</button> <button type="button" class="opd_list_picker_cancel">${i18n_message("ui_list_picker_cancel")}</button></span></div></div>`;
         document.body.appendChild(overlay);
-        const close_picker = function(){ overlay.remove(); };
-        overlay.querySelector(".opd_list_picker_close").addEventListener("click", close_picker);
-        overlay.addEventListener("click", function(e){ if(e.target === overlay){ close_picker(); } });
-        const body = overlay.querySelector(".opd_list_picker_body");
-        //リスト一覧をスクレイピングするためのiframe。
-        //Xの一覧は表示領域の高さで仮想化されるため、画面外に実寸で配置して描画させる。
-        //クロスオリジンを避けるため現在のオリジン(x.com / twitter.com)を使用する。
-        const loader = document.createElement("iframe");
-        loader.style = "position:fixed;left:-10000px;top:0;width:480px;height:800px;border:0;";
-        loader.src = `${location.origin}${lists_path}`;
-        overlay.appendChild(loader);
-        let resolved = false;
-        //iframe内のリスト一覧ページからリストを抽出して描画
-        const render_lists = function(){
-            let lists = [];
-            try{
-                const anchors = loader.contentDocument.querySelectorAll('a[href*="/lists/"]');
-                const seen = {};
-                anchors.forEach(function(a){
-                    const href = a.getAttribute("href") || "";
-                    const m = href.match(/\/lists\/(\d+)/);
-                    if(!m){ return; }
-                    const id = m[1];
-                    if(seen[id]){ return; }
-                    const name = extract_list_name(a);
-                    seen[id] = true;
-                    lists.push({path: `/i/lists/${id}`, name: name || `/i/lists/${id}`});
-                });
-            }catch(err){
-                //contentDocument未生成・クロスオリジン等で取得に失敗した場合は次のポーリングで再試行
-                return false;
-            }
-            if(lists.length === 0){ return false; }
-            resolved = true;
-            let html = "";
-            lists.forEach(function(list){
-                const safe_name = list.name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                html += `<button type="button" class="opd_list_picker_item" data-opd-list-path="${list.path}" data-opd-list-name="${opd_attr_escape(list.name)}"><span>${safe_name}</span><span class="opd_list_picker_item_sub">${list.path}</span></button>`;
-            });
-            body.innerHTML = html;
-            body.querySelectorAll(".opd_list_picker_item").forEach(function(btn){
-                btn.addEventListener("click", function(){
-                    add_explore_column_with_path(this.getAttribute("data-opd-list-path"), this.getAttribute("data-opd-list-name"));
-                    close_picker();
-                });
-            });
-            return true;
+        let poll = null;
+        const close_picker = function(){
+            if(poll){ clearInterval(poll); poll = null; }
+            overlay.remove();
         };
-        //load発火に依存せず即座にポーリング開始(load未発火やSPAの遅延描画にも対応)
-        let attempts = 0;
-        const max_attempts = 60; //約30秒
-        const timer = setInterval(function(){
-            attempts++;
-            if(resolved || !document.body.contains(overlay)){
-                clearInterval(timer);
-                return;
+        overlay.querySelector(".opd_list_picker_close").addEventListener("click", close_picker);
+        overlay.querySelector(".opd_list_picker_cancel").addEventListener("click", close_picker);
+        overlay.addEventListener("click", function(e){ if(e.target === overlay){ close_picker(); } });
+        const frame = overlay.querySelector(".opd_list_picker_frame");
+        const selected_label = overlay.querySelector(".opd_list_picker_selected");
+        const add_btn = overlay.querySelector(".opd_list_picker_add");
+        let current = null;
+        //iframeで開いているページがリストかを監視し、確定ボタンの有効/無効と選択中表示を更新する
+        const detect = function(){
+            try{
+                const id = extract_list_id_from_path(frame.contentWindow.location.pathname);
+                if(id){
+                    const title = (frame.contentWindow.document.title || "").replace(/\s*\/\s*(X|Twitter)$/, "").trim();
+                    current = {path: `/i/lists/${id}`, title: title || `/i/lists/${id}`};
+                    add_btn.disabled = false;
+                    selected_label.textContent = i18n_message("ui_list_picker_current", [current.title]);
+                }else{
+                    current = null;
+                    add_btn.disabled = true;
+                    selected_label.textContent = i18n_message("ui_list_picker_none");
+                }
+            }catch(err){
+                //クロスオリジン等(通常は同一オリジンのため発生しない)
+                current = null;
+                add_btn.disabled = true;
             }
-            if(render_lists()){
-                clearInterval(timer);
-                return;
-            }
-            if(attempts >= max_attempts){
-                clearInterval(timer);
-                body.innerHTML = `<div class="opd_list_picker_status">${i18n_message("ui_list_picker_empty")}</div>`;
-            }
-        }, 500);
+        };
+        poll = setInterval(detect, 500);
+        add_btn.addEventListener("click", function(){
+            if(!current){ return; }
+            add_explore_column_with_path(current.path, current.title);
+            close_picker();
+        });
     }
     //プロファイル保存ボタン
     document.getElementById("profile_save").addEventListener("click", function(){
