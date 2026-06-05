@@ -1664,13 +1664,19 @@ function run(settings){
     document.getElementById("add_list").addEventListener("click", function(){
         open_list_picker();
     });
-    //指定したパスでExploreベースのカラムを追加する(リストカラムで使用)
-    function add_explore_column_with_path(open_path){
+    //HTML属性値用のエスケープ
+    function opd_attr_escape(str){
+        return (str || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    //指定したパス/タイトルでExploreベースのカラムを追加する(リストカラムで使用)
+    function add_explore_column_with_path(open_path, open_title){
         const empty_column = document.querySelector(".dsp_column_emptycolumn");
         const first_column = empty_column?.closest('div')?.querySelector('section[draggable="true"]');
         const add_target_column = (is_shift_pressed && first_column) ? first_column : empty_column;
         if(!add_target_column){ return; }
-        const new_column = default_element["explore"]["html"].replaceAll("%column_save_path%", open_path).replaceAll("%column_num%", create_random_id()).replace("%column_banner_ch%", "").replace("%column_top_bar_ch%", "checked").replace("%column_tw_view_mode%", "0").replaceAll("%column_pinned_save_path%", "").replaceAll("%column_width_num%", "30").replaceAll("%column_auto_reload_ch%", "").replaceAll("%column_auto_reload_time%", "10000");
+        //属性破壊や保存→再読込時の不整合を避けるため二重引用符は除去してから格納する
+        const save_title = opd_attr_escape((open_title || "").replace(/"/g, "").trim());
+        const new_column = default_element["explore"]["html"].replaceAll("%column_save_path%", open_path).replaceAll("%column_num%", create_random_id()).replace("%column_banner_ch%", "").replace("%column_top_bar_ch%", "checked").replace("%column_tw_view_mode%", "0").replace("%column_pinned_ch%", "").replaceAll("%column_pinned_save_path%", "").replaceAll("%column_save_title%", save_title).replaceAll("%column_width_num%", "30").replaceAll("%column_auto_reload_ch%", "").replaceAll("%column_auto_reload_time%", "10000");
         add_target_column.insertAdjacentHTML("beforebegin", new_column);
         add_target_column.scrollIntoView({behavior: "smooth",inline: "end"});
         const all_webview = document.querySelectorAll('#main_rack_element iframe[opd_init_webview]');
@@ -1688,6 +1694,25 @@ function run(settings){
         }
         return null;
     }
+    //リストセルのリンクから、@ハンドルやメンバー数等のメタ情報を除いたリスト名を抽出する
+    function extract_list_name(anchor){
+        const texts = [];
+        const walker = anchor.ownerDocument.createTreeWalker(anchor, NodeFilter.SHOW_TEXT);
+        let node;
+        while((node = walker.nextNode())){
+            const t = node.textContent.trim();
+            if(t){ texts.push(t); }
+        }
+        for(let i = 0; i < texts.length; i++){
+            const t = texts[i];
+            if(t === "·" || t === "•"){ continue; }
+            if(t.startsWith("@")){ continue; }
+            //"12 members" / "1.2万 メンバー" 等のメンバー数表記を除外(名前が数字始まりの場合は除外しない)
+            if(/^[\d,.]+\s*(k|m|万|億)?\s*(members?|メンバー|人)?$/i.test(t)){ continue; }
+            return t;
+        }
+        return texts[0] || "";
+    }
     //リスト選択ピッカーを開く
     function open_list_picker(){
         //多重起動防止
@@ -1702,10 +1727,12 @@ function run(settings){
         overlay.querySelector(".opd_list_picker_close").addEventListener("click", close_picker);
         overlay.addEventListener("click", function(e){ if(e.target === overlay){ close_picker(); } });
         const body = overlay.querySelector(".opd_list_picker_body");
-        //リスト一覧をスクレイピングするための非表示iframe
+        //リスト一覧をスクレイピングするためのiframe。
+        //Xの一覧は表示領域の高さで仮想化されるため、画面外に実寸で配置して描画させる。
+        //クロスオリジンを避けるため現在のオリジン(x.com / twitter.com)を使用する。
         const loader = document.createElement("iframe");
-        loader.style = "position:absolute;width:0;height:0;border:0;visibility:hidden;";
-        loader.src = `https://x.com${lists_path}`;
+        loader.style = "position:fixed;left:-10000px;top:0;width:480px;height:800px;border:0;";
+        loader.src = `${location.origin}${lists_path}`;
         overlay.appendChild(loader);
         let resolved = false;
         //iframe内のリスト一覧ページからリストを抽出して描画
@@ -1720,12 +1747,12 @@ function run(settings){
                     if(!m){ return; }
                     const id = m[1];
                     if(seen[id]){ return; }
-                    const name = (a.textContent || "").trim().split("\n")[0].trim();
+                    const name = extract_list_name(a);
                     seen[id] = true;
                     lists.push({path: `/i/lists/${id}`, name: name || `/i/lists/${id}`});
                 });
             }catch(err){
-                //クロスオリジン等で取得に失敗した場合
+                //contentDocument未生成・クロスオリジン等で取得に失敗した場合は次のポーリングで再試行
                 return false;
             }
             if(lists.length === 0){ return false; }
@@ -1733,37 +1760,35 @@ function run(settings){
             let html = "";
             lists.forEach(function(list){
                 const safe_name = list.name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                html += `<button type="button" class="opd_list_picker_item" data-opd-list-path="${list.path}"><span>${safe_name}</span><span class="opd_list_picker_item_sub">${list.path}</span></button>`;
+                html += `<button type="button" class="opd_list_picker_item" data-opd-list-path="${list.path}" data-opd-list-name="${opd_attr_escape(list.name)}"><span>${safe_name}</span><span class="opd_list_picker_item_sub">${list.path}</span></button>`;
             });
             body.innerHTML = html;
             body.querySelectorAll(".opd_list_picker_item").forEach(function(btn){
                 btn.addEventListener("click", function(){
-                    add_explore_column_with_path(this.getAttribute("data-opd-list-path"));
+                    add_explore_column_with_path(this.getAttribute("data-opd-list-path"), this.getAttribute("data-opd-list-name"));
                     close_picker();
                 });
             });
             return true;
         };
-        loader.addEventListener("load", function(){
-            //SPAのため一覧描画を待ちつつ一定回数取得を試みる
-            let attempts = 0;
-            const max_attempts = 40; //約20秒
-            const timer = setInterval(function(){
-                attempts++;
-                if(resolved || !document.body.contains(overlay)){
-                    clearInterval(timer);
-                    return;
-                }
-                if(render_lists()){
-                    clearInterval(timer);
-                    return;
-                }
-                if(attempts >= max_attempts){
-                    clearInterval(timer);
-                    body.innerHTML = `<div class="opd_list_picker_status">${i18n_message("ui_list_picker_empty")}</div>`;
-                }
-            }, 500);
-        });
+        //load発火に依存せず即座にポーリング開始(load未発火やSPAの遅延描画にも対応)
+        let attempts = 0;
+        const max_attempts = 60; //約30秒
+        const timer = setInterval(function(){
+            attempts++;
+            if(resolved || !document.body.contains(overlay)){
+                clearInterval(timer);
+                return;
+            }
+            if(render_lists()){
+                clearInterval(timer);
+                return;
+            }
+            if(attempts >= max_attempts){
+                clearInterval(timer);
+                body.innerHTML = `<div class="opd_list_picker_status">${i18n_message("ui_list_picker_empty")}</div>`;
+            }
+        }, 500);
     }
     //プロファイル保存ボタン
     document.getElementById("profile_save").addEventListener("click", function(){
