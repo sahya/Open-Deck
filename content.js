@@ -1130,6 +1130,16 @@ function run(settings){
                         this.contentWindow.document.querySelector('head style[opd_top_visible_css]').textContent = ``;
                     }
 
+                    //リストカラム用ヘッダー非表示CSS(バナー画像・リスト情報・編集ボタン等)
+                    if(this.contentWindow.document.querySelector('head style[opd_list_header_css]') == null){
+                        this.contentWindow.document.querySelector("head").insertAdjacentHTML("beforeend", `<style opd_list_header_css></style>`);
+                    }
+                    if((this.closest("div[opd_column_type]").getAttribute("opd_explore_path") || "").startsWith("/i/lists/")){
+                        this.contentWindow.document.querySelector('head style[opd_list_header_css]').textContent = `div[data-testid="primaryColumn"]>div>div:nth-child(1), div[data-testid="primaryColumn"]>div>div:nth-child(2){display:none !important;}`;
+                    }else{
+                        this.contentWindow.document.querySelector('head style[opd_list_header_css]').textContent = ``;
+                    }
+
                     //ツイート表示項目設定読み込み適用
                     if(this.contentWindow.document.querySelector("head style[opd_tw_view_mode_css]") == null){
                         this.contentWindow.document.querySelector("head").insertAdjacentHTML("beforeend", `<style opd_tw_view_mode_css></style>`);
@@ -1545,6 +1555,14 @@ function run(settings){
                             element.setAttribute("opd_explore_title", exp_title);
                             //console.log(exp_title);
                             column_settings_save("", last_load_profile);
+                            //リストカラムヘッダーCSS更新
+                            if(exp_object.contentWindow.document.querySelector('head style[opd_list_header_css]') != null){
+                                if(exp_url.pathname.startsWith("/i/lists/")){
+                                    exp_object.contentWindow.document.querySelector('head style[opd_list_header_css]').textContent = `div[data-testid="primaryColumn"]>div>div:nth-child(1), div[data-testid="primaryColumn"]>div>div:nth-child(2){display:none !important;}`;
+                                }else{
+                                    exp_object.contentWindow.document.querySelector('head style[opd_list_header_css]').textContent = ``;
+                                }
+                            }
                         }
                     });
                     exp_observer.observe(exp_object.contentWindow.document, {childList: true, subtree: true});
