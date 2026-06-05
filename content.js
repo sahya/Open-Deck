@@ -2,6 +2,11 @@ console.log("Welcome to Open-Deck!");
 const manifest = chrome.runtime.getManifest();
 //試作版の場合は true にする
 const is_prototype = false;
+// デバッグビルド: 投稿機能のデバッグログを有効にする
+const OPD_DEBUG = true;
+function opd_debug(...args){ if(OPD_DEBUG) console.log("%c[OPD-DEBUG]", "background:#ffeb3b;color:#000;padding:2px 4px;border-radius:3px;", ...args); }
+function opd_debug_warn(...args){ if(OPD_DEBUG) console.warn("%c[OPD-DEBUG]", "background:#ff9800;color:#000;padding:2px 4px;border-radius:3px;", ...args); }
+function opd_debug_error(...args){ if(OPD_DEBUG) console.error("%c[OPD-DEBUG]", "background:#f44336;color:#fff;padding:2px 4px;border-radius:3px;", ...args); }
 if(is_prototype){
     console.log("%cOpen-Deck Prototype", "background:#a1f4ff;padding:5px;border-radius:5px", `Version:${manifest.version}`);
 }else{
@@ -93,6 +98,8 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     }
   });
 //
+opd_debug("ページURL:", location.href);
+opd_debug("URL pathname:", url_path.pathname);
 if(location.href == "https://twitter.com/run-opdeck" || location.href == "https://x.com/run-opdeck"){
     //testmode
     if(url_path.pathname == "/run-opdeck_test.html"){
@@ -115,7 +122,7 @@ if(location.href == "https://twitter.com/run-opdeck" || location.href == "https:
     }
     //chrome.runtime.sendMessage({message: "dnr_upd"});
     function init(){
-        //console.log("Welcome to Open-Deck!");
+        opd_debug("init() 開始 - 設定読み込み中...");
         chrome.storage.local.get("opd_settings", function(value){
             if(value.opd_settings == undefined){
                 last_load_profile = 0;
@@ -136,8 +143,7 @@ if(location.href == "https://twitter.com/run-opdeck" || location.href == "https:
             }
             
             chrome.storage.local.get("opd_profile_store", function(store_value){
-                //console.log(store_value)
-                //console.log(JSON.parse(store_value.opd_profile_store))
+                opd_debug("プロファイルストア読み込み:", store_value.opd_profile_store ? "OK" : "未定義");
                 profile_store = JSON.parse(store_value.opd_profile_store);
                 //RUN
                 let ext_update_flag = null;
@@ -186,14 +192,15 @@ if(location.href == "https://twitter.com/run-opdeck" || location.href == "https:
                     }
                     ext_settings = {column_settings:profile_store[last_load_profile].profile};
                 }
-                //console.log(ext_settings);
+                opd_debug("run() 呼び出し - カラム設定:", JSON.stringify(ext_settings.column_settings.map(c => c.type)));
                 run(ext_settings);
             });
         });
     }
 }
 function run(settings){
-    //console.log(settings)
+    opd_debug("run() 開始 - カラム数:", settings.column_settings.length);
+    opd_debug("run() カラム一覧:", settings.column_settings.map((c,i) => `[${i}]${c.type}`).join(", "));
     let profile_list_html;
     let profile_list_btn_html = "";
     //プロファイルリスト初期化
@@ -205,6 +212,7 @@ function run(settings){
     //カラム全体のテキストフォーカスの状態で自動更新を制御できるようにする
     window.addEventListener('opd_post_focus', (e) => {
         const detail = JSON.parse(e.detail);
+        opd_debug("opd_post_focus イベント受信 - フォーカス状態:", detail);
         if(detail){
             column_auto_update_state.text_focus.date = Date.now();
             column_auto_update_state.text_focus.active = true;
@@ -965,20 +973,30 @@ function run(settings){
     //CSS適用(追加/変更の時に呼び出し)
     //session_webview_obj は Desktop 版とコード共通化を保たせるために同様の名称としている
     function append_object_css(mode, session_webview_obj){
+        opd_debug("append_object_css() 開始 - mode:", mode);
         let column_object = null;
         if(mode == "session_set" || mode == "add_column"){
             column_object = session_webview_obj;
         }else{
             column_object = document.querySelectorAll('.dsp_column:not([opd_column_type="dsp_column"], [opd_column_type="empty_column"], [opd_column_type="main_bar_empty_column"]) iframe');
         }
+        opd_debug("append_object_css() 対象iframe数:", column_object?.length);
 
         //カラム読み込み失敗検出
         watch_load_column(column_object);
 
         for (let index = 0; index < column_object.length; index++) {
             column_object[index].removeAttribute("opd_init_webview");
+            opd_debug(`iframe[${index}] 初期化開始 - src:`, column_object[index].src, "カラムタイプ:", column_object[index].closest("div[opd_column_type]")?.getAttribute("opd_column_type"));
             //バナー/表示モード変更
             column_object[index].addEventListener("load", function(){
+                const col_type = this.closest("div[opd_column_type]")?.getAttribute("opd_column_type");
+                opd_debug(`iframe load(CSS) 発火 - src: ${this.src}, カラムタイプ: ${col_type}`);
+                try {
+                    opd_debug(`iframe contentWindow アクセス可否: ${!!this.contentWindow}`, "document:", !!this.contentWindow?.document, "head:", !!this.contentWindow?.document?.head);
+                } catch(e) {
+                    opd_debug_error("iframe contentWindow アクセスエラー (CORS/CSP):", e.message);
+                }
                 console.log(this.getAttribute("opd_iframe_width_only"))
                 if(this.getAttribute("opd_iframe_width_only") != ''){
                     //console.log(this)
@@ -1048,7 +1066,8 @@ function run(settings){
             })
             //各カラム読み込み後の動作(init)
             column_object[index].addEventListener("load", function(){
-                //console.log(this)
+                const col_type_init = this.closest("div[opd_column_type]")?.getAttribute("opd_column_type");
+                opd_debug(`iframe load(init) 発火 - src: ${this.src}, カラムタイプ: ${col_type_init}, mode: ${mode}`);
                 let opd_column_div = this.closest("div[opd_column_type]");
                 let opd_column_width_btn = opd_column_div.querySelector(".column_width_btn");
                 let opd_column_width_select = opd_column_div.querySelector(".opd_column_size_preset");
@@ -1516,18 +1535,23 @@ function run(settings){
     //ポストカラム追加
     //TODO: カラム追加周りの処理をもっと簡略化すること
     document.getElementById("add_post").addEventListener("click", function(){
+        opd_debug("ポストカラム追加ボタン押下");
         const empty_column = document.querySelector(".dsp_column_emptycolumn");
         const first_column = empty_column?.closest('div')?.querySelector('section[draggable="true"]');
         const add_target_column = (is_shift_pressed && first_column) ? first_column : empty_column;
+        opd_debug("ポストカラム追加先:", add_target_column ? "見つかった" : "見つからない", "Shift:", is_shift_pressed);
 
         const new_column = default_element["post"]["html"].replaceAll("%column_num%", create_random_id()).replace("%column_banner_ch%", "").replace("%column_top_bar_ch%", "checked").replace("%column_tw_view_mode%", "0").replaceAll("%column_width_num%", "30").replaceAll("%column_auto_reload_ch%", "").replaceAll("%column_auto_reload_time%", "10000");
+        opd_debug("ポストカラムHTML生成完了, iframe src:", new_column.match(/src="([^"]+)"/)?.[1]);
         add_target_column.insertAdjacentHTML("beforebegin", new_column);
         add_target_column.scrollIntoView({behavior: "smooth",inline: "end"});
         const all_webview = document.querySelectorAll('#main_rack_element iframe[opd_init_webview]');
+        opd_debug("初期化待ちiframe数:", all_webview.length);
         append_object_css("add_column", all_webview);
         column_dd();
         column_close();
         column_settings_save("", last_load_profile);
+        opd_debug("ポストカラム追加完了");
     });
     //タイムラインカラム追加
     document.getElementById("add_timeline").addEventListener("click", function(){
@@ -1638,34 +1662,99 @@ function run(settings){
     //カラム拡張機能の初期化(カラム拡張機能追加はここで行います)
     function reinit_column_extensions(column_div){
         const column_frame = column_div?.querySelector("iframe");
-        if(!column_frame) return;
+        if(!column_frame){
+            opd_debug_warn("reinit_column_extensions: iframeが見つからない");
+            return;
+        }
         const column_type = column_div.getAttribute("opd_column_type");
+        opd_debug(`reinit_column_extensions() 開始 - カラムタイプ: ${column_type}, src: ${column_frame.src}`);
 
-        if(column_frame.opd_ext_initialized) return;
+        if(column_frame.opd_ext_initialized){
+            opd_debug(`reinit_column_extensions: 既に初期化済み - カラムタイプ: ${column_type}`);
+            return;
+        }
 
         let initialized = false;
         const doInit = () => {
-            if(initialized) return;
+            if(initialized){
+                opd_debug(`doInit: 既にinitializeされている - カラムタイプ: ${column_type}`);
+                return;
+            }
             const target_window = column_frame.contentWindow;
+            opd_debug(`doInit() 呼び出し - カラムタイプ: ${column_type}, contentWindow: ${!!target_window}`);
 
-            if(target_window && (!target_window.document || !target_window.document.head)) return;
+            if(target_window && (!target_window.document || !target_window.document.head)){
+                opd_debug_warn(`doInit: document/headがまだ準備できていない - カラムタイプ: ${column_type}`);
+                return;
+            }
             initialized = true;
 
             column_frame.opd_ext_initialized = true;
+            opd_debug(`doInit: 拡張初期化開始 - カラムタイプ: ${column_type}`);
+
+            try {
+                opd_debug(`doInit: contentWindow.location: ${target_window.location.href}`);
+            } catch(e) {
+                opd_debug_warn(`doInit: contentWindow.location 取得不可 (クロスオリジン): ${e.message}`);
+            }
+
+            try {
+                opd_debug(`doInit: iframe document.readyState: ${target_window.document.readyState}`);
+                opd_debug(`doInit: iframe document.title: ${target_window.document.title}`);
+                opd_debug(`doInit: iframe head要素数: ${target_window.document.head.children.length}`);
+                opd_debug(`doInit: iframe body要素: ${!!target_window.document.body}, 子要素数: ${target_window.document.body?.children?.length}`);
+            } catch(e) {
+                opd_debug_error(`doInit: iframe DOM アクセスエラー: ${e.message}`);
+            }
 
             //ユーティリティを仕込む
+            opd_debug(`doInit: OpdUtils 初期化中 - カラムタイプ: ${column_type}`);
             const opd_utils = new OpdUtils();
             opd_utils.Init(target_window);
 
             //文章校正機能を仕込む
             if(column_type === "post"){
+                opd_debug("doInit: ポストカラム検出 - OpdExtTextReview 初期化開始");
                 const ext_text_review = new OpdExtTextReview();
                 const ui_lang = chrome.i18n.getUILanguage();
+                opd_debug("doInit: UI言語:", ui_lang);
                 ext_text_review.Init(target_window, ui_icon_define, ui_lang);
+                opd_debug("doInit: OpdExtTextReview 初期化完了");
+
+                // ポストカラム特有のデバッグ: iframe内の主要要素を確認
+                try {
+                    const iframeDoc = target_window.document;
+                    opd_debug("ポストiframe DOM解析:");
+                    opd_debug("  - main要素:", !!iframeDoc.querySelector("main"));
+                    opd_debug("  - tweetTextarea:", !!iframeDoc.querySelector('div[data-testid="tweetTextarea_0"]'));
+                    opd_debug("  - tweetButton:", !!iframeDoc.querySelector('div[data-testid="tweetButton"]'));
+                    opd_debug("  - toolBar:", !!iframeDoc.querySelector('div[data-testid="toolBar"]'));
+                    opd_debug("  - progressBar:", !!iframeDoc.querySelector('div[data-testid="progressBar-bar"]'));
+                    opd_debug("  - contentEditable要素:", iframeDoc.querySelectorAll('[contenteditable="true"]').length, "個");
+
+                    // 投稿ボタンの状態を定期的に監視
+                    const postBtnObserver = new MutationObserver(() => {
+                        const tweetBtn = iframeDoc.querySelector('div[data-testid="tweetButton"], button[data-testid="tweetButton"]');
+                        const tweetTextarea = iframeDoc.querySelector('div[data-testid="tweetTextarea_0"]');
+                        if(tweetBtn){
+                            opd_debug("ポスト投稿ボタン状態: disabled=", tweetBtn.getAttribute("aria-disabled"), "tabindex=", tweetBtn.getAttribute("tabindex"));
+                        }
+                        if(tweetTextarea){
+                            opd_debug("テキストエリア内容:", tweetTextarea.textContent?.substring(0, 50));
+                        }
+                    });
+                    if(iframeDoc.body){
+                        postBtnObserver.observe(iframeDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-disabled", "disabled"] });
+                        opd_debug("ポストiframe MutationObserver 設定完了");
+                    }
+                } catch(e) {
+                    opd_debug_error("ポストiframe DOM解析エラー:", e.message);
+                }
             }
 
             //自動更新とメディアビューワーを仕込む
             if(column_type === "home" || column_type === "explore"){
+                opd_debug(`doInit: ${column_type} カラム - AutoReload/MediaViewerBlocker 初期化`);
                 const auto_reload = new OpdExtAutoReload();
                 auto_reload.Init(target_window);
                 //カラムフレームに紐付けて、自動更新部分で参照できるようにする
@@ -1675,11 +1764,14 @@ function run(settings){
                 blocker.Init(target_window);
                 media_viewer_token.push(blocker.opd_send_media_info_token);
             }
+            opd_debug(`doInit: 拡張初期化完了 - カラムタイプ: ${column_type}`);
         };
 
         if(column_frame.contentDocument?.readyState === "complete"){
+            opd_debug(`reinit_column_extensions: readyState=complete, 即時初期化 - カラムタイプ: ${column_type}`);
             doInit();
         }else{
+            opd_debug(`reinit_column_extensions: readyState=${column_frame.contentDocument?.readyState ?? "不明"}, loadイベント待ち - カラムタイプ: ${column_type}`);
             column_frame.addEventListener("load", doInit, { once: true });
         }
     }
@@ -2055,25 +2147,36 @@ function get_cookie_color_mode() {
 }
 //カラム読み込み失敗検出
 function watch_load_column(column_frames, max_retries = 5){
+    opd_debug(`watch_load_column() 開始 - 監視対象iframe数: ${column_frames.length}, 最大リトライ: ${max_retries}`);
     const cleanups = [];
-    column_frames.forEach(column => {
+    column_frames.forEach((column, idx) => {
         let count = 0;
+        const col_type = column.closest("div[opd_column_type]")?.getAttribute("opd_column_type");
 
         const reLoad = () => {
-            if (++count >= max_retries) return;
+            if (++count >= max_retries){
+                opd_debug_error(`watch_load_column: 最大リトライ到達 - iframe[${idx}] カラムタイプ: ${col_type}, src: ${column.src}`);
+                return;
+            }
+            opd_debug_warn(`watch_load_column: リロード試行 ${count}/${max_retries} - iframe[${idx}] カラムタイプ: ${col_type}, src: ${column.src}`);
             setTimeout(() => { column.src = column.src }, 500);
         };
 
         const onLoad = () => {
             try {
                 column.contentWindow.document.querySelector('head');
-            } catch {
+                opd_debug(`watch_load_column: ロード成功 - iframe[${idx}] カラムタイプ: ${col_type}`);
+            } catch(e) {
+                opd_debug_error(`watch_load_column: headアクセス失敗 - iframe[${idx}] カラムタイプ: ${col_type}, エラー: ${e.message}`);
                 reLoad();
             }
         };
 
         column.addEventListener('load', onLoad);
-        column.addEventListener('error', reLoad);
+        column.addEventListener('error', (e) => {
+            opd_debug_error(`watch_load_column: errorイベント発生 - iframe[${idx}] カラムタイプ: ${col_type}, src: ${column.src}`);
+            reLoad();
+        });
         cleanups.push(() => {
             column.removeEventListener('load', onLoad);
             column.removeEventListener('error', reLoad);

@@ -3,12 +3,21 @@ class OpdExtTextReview {
     constructor() {
         this.opd_text_review_token = null;
         this.opd_use_lang = "ja";
+        this._debug = (...args) => { console.log("%c[OPD-DEBUG:TEXT-REVIEW]", "background:#9c27b0;color:#fff;padding:2px 4px;border-radius:3px;", ...args); };
+        this._debug_warn = (...args) => { console.warn("%c[OPD-DEBUG:TEXT-REVIEW]", "background:#ff9800;color:#000;padding:2px 4px;border-radius:3px;", ...args); };
+        this._debug_error = (...args) => { console.error("%c[OPD-DEBUG:TEXT-REVIEW]", "background:#f44336;color:#fff;padding:2px 4px;border-radius:3px;", ...args); };
         this.Init = (column_window, icons, ui_lang) => {
             //初期化
+            this._debug("Init() 開始");
+            this._debug("  column_window:", !!column_window);
+            this._debug("  column_window.location:", column_window.location?.href);
+            this._debug("  icons:", Object.keys(icons).join(", "));
+            this._debug("  ui_lang:", ui_lang);
             let editable_elem = null;
             let is_textarea_empty = true;
             let review_state = false;
             this.opd_use_lang = ui_lang.split("-")[0];
+            this._debug("  使用言語:", this.opd_use_lang);
             column_window.document.head.insertAdjacentHTML("beforeend", `<style opd_post_textreview_css>
                 /* Premium 勧誘要素非表示 */
                 div[aria-live="polite"][role="status"]:has(a[dir="ltr"]){
@@ -106,13 +115,23 @@ class OpdExtTextReview {
                 }
             </style>`);
             //ヘルパースクリプト追加
+            this._debug("ヘルパースクリプト注入中...");
             const helper_script = column_window.document.createElement('script');
             helper_script.src = chrome.runtime.getURL("extensions/text_review_helper.js");
+            helper_script.addEventListener("load", () => {
+                this._debug("ヘルパースクリプト読み込み成功:", helper_script.src);
+            });
+            helper_script.addEventListener("error", (e) => {
+                this._debug_error("ヘルパースクリプト読み込み失敗:", helper_script.src, e);
+            });
             column_window.document.head.appendChild(helper_script);
+            this._debug("ヘルパースクリプトをheadに追加完了");
 
             //貼り付け認証トークンを追加する
             this.opd_text_review_token = crypto.randomUUID();
+            this._debug("認証トークン生成:", this.opd_text_review_token.substring(0, 8) + "...");
             setTimeout(() => {
+                this._debug("opd_text_review_init イベント送信 - トークン:", this.opd_text_review_token.substring(0, 8) + "...");
                 column_window.document.dispatchEvent(new CustomEvent('opd_text_review_init', {
                     detail: JSON.stringify({ token:this.opd_text_review_token })
                 }));
@@ -121,6 +140,7 @@ class OpdExtTextReview {
             column_window.document.addEventListener("focusin", (ev) => {
                 //テキストエリアフォーカスタイミングで文字有無のカウンタを仕込む
                 if (ev.target && ev.target.isContentEditable) {
+                    this._debug("focusin: contentEditable要素検出 - tag:", ev.target.tagName, "class:", ev.target.className);
                     editable_elem = ev.target;
                     if(!editable_elem.getAttribute("opd_text_counter")){
                         //input イベントでは半角文字の削除が取得できないため、MutationObserver を使う
@@ -147,6 +167,7 @@ class OpdExtTextReview {
                 const btnAddTarget = column_window.document.querySelector('div[data-testid="toolBar"]');
                 const function_panel = column_window.document.querySelector('div.opd_post_functions');
                 if (btnAddTarget && !function_panel) {
+                    this._debug("MutationObserver: toolBar検出 - 校正ボタン追加開始");
                     //テーマカラー取得&ボタンカラー設定
                     const theme_color = this.CssChecker(getComputedStyle(column_window.document.querySelector('div[data-testid="progressBar-bar"]')).backgroundColor);
                     column_window.document.head.insertAdjacentHTML("beforeend", `<style opd_post_textreview_theme_css>.opd_text_review_btn_icon{background-color:${theme_color};}.opd_text_review_btn:not([opd_text_review_is_empty]):hover{border-radius: 100px;transition-duration: 0.2s;background-color:${theme_color.replace(")", ", 0.1)")};}.opd_text_review_panel{background-color:${theme_color.replace(")", ", 0.1)")};}</style>`);
@@ -321,10 +342,18 @@ class OpdExtTextReview {
         }
         this.ReviewRquest = async(str)=>{
             //校正を開始し、結果を得る関数
-            const review_result = await chrome.runtime.sendMessage({message: "text_review", review_text: str});
-            if(review_result){
-                return review_result;
-            }else{
+            this._debug("ReviewRequest 開始 - テキスト長:", str.length, "内容:", str.substring(0, 50) + "...");
+            try {
+                const review_result = await chrome.runtime.sendMessage({message: "text_review", review_text: str});
+                this._debug("ReviewRequest 結果:", review_result ? `指摘数: ${review_result.indications?.length}` : "失敗");
+                if(review_result){
+                    return review_result;
+                }else{
+                    this._debug_error("ReviewRequest: falseが返された");
+                    return false;
+                }
+            } catch(e) {
+                this._debug_error("ReviewRequest エラー:", e.message);
                 return false;
             }
         }
