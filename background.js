@@ -66,40 +66,69 @@ function send_content_script(value){
         console.log("set ok");
       });*/
 }
-
 chrome.webRequest.onHeadersReceived.addListener(function (resp) {
-    let category = null;
-    if(resp.url.includes("SearchTimeline")){
-        category = "search";
-    }else if(resp.url.includes("HomeLatestTimeline")){
-        category = "time_line";
-    }else if(resp.url.includes("HomeTimeline")){
-        category = "recommend_timeline";
-    }
-
-    if (!category) return;
-
-    for(const header of resp.responseHeaders){
-        switch (header.name) {
-            case "x-rate-limit-remaining":
-                access_limit[category].remaining = header.value;
-                break;
-            case "x-rate-limit-limit":
-                access_limit[category].limit = header.value;
-                break;
-            case "x-rate-limit-reset":
-                access_limit[category].reset_unix_time = header.value;
-                break;
+      if(resp.url.search(/SearchTimeline/g) != -1){
+        //console.log(resp);
+        for (let index = 0; index < resp.responseHeaders.length; index++) {
+            switch (resp.responseHeaders[index].name) {
+                case "x-rate-limit-remaining":
+                    access_limit.search.remaining = resp.responseHeaders[index].value;
+                    break;
+                case "x-rate-limit-limit":
+                    access_limit.search.limit = resp.responseHeaders[index].value;
+                    break;
+                case "x-rate-limit-reset":
+                    access_limit.search.reset_unix_time = resp.responseHeaders[index].value;
+                    break;
+                default:
+                    break;
+            }
         }
-    }
-
-    send_content_script(access_limit);
-}, { urls: [
-    '*://x.com/i/api/graphql/*/SearchTimeline*',
-    '*://x.com/i/api/graphql/*/HomeLatestTimeline*',
-    '*://x.com/i/api/graphql/*/HomeTimeline*'
-] }, ['responseHeaders']);
-
+        //(access_limit);
+        send_content_script(access_limit);
+      }
+      if(resp.url.search(/HomeLatestTimeline/g) != -1){
+        //console.log(resp);
+        for (let index = 0; index < resp.responseHeaders.length; index++) {
+            switch (resp.responseHeaders[index].name) {
+                case "x-rate-limit-remaining":
+                    access_limit.time_line.remaining = resp.responseHeaders[index].value;
+                    break;
+                case "x-rate-limit-limit":
+                    access_limit.time_line.limit = resp.responseHeaders[index].value;
+                    break;
+                case "x-rate-limit-reset":
+                    access_limit.time_line.reset_unix_time = resp.responseHeaders[index].value;
+                    break;
+                default:
+                    break;
+            }
+        }
+        //console.log(access_limit)
+        send_content_script(access_limit);
+      }
+      if(resp.url.search(/HomeTimeline/g) != -1){
+        //console.log(resp);
+        for (let index = 0; index < resp.responseHeaders.length; index++) {
+            switch (resp.responseHeaders[index].name) {
+                case "x-rate-limit-remaining":
+                    access_limit.recommend_timeline.remaining = resp.responseHeaders[index].value;
+                    break;
+                case "x-rate-limit-limit":
+                    access_limit.recommend_timeline.limit = resp.responseHeaders[index].value;
+                    break;
+                case "x-rate-limit-reset":
+                    access_limit.recommend_timeline.reset_unix_time = resp.responseHeaders[index].value;
+                    break;
+                default:
+                    break;
+            }
+        }
+        //console.log(access_limit)
+        send_content_script(access_limit);
+      }
+    },{urls: ['*://x.com/i/api/*']},['responseHeaders']
+  );
 
 function update_dnr(){
     const dnr_rules = [
@@ -122,7 +151,19 @@ function update_dnr(){
             condition : {
                 requestDomains: ["x.com", "twitter.com"],
                 initiatorDomains: [EXTENSION_DOMAIN, "x.com", "twitter.com"],
-                resourceTypes: ["main_frame", "sub_frame", "xmlhttprequest", "script", "stylesheet"]
+                resourceTypes: ["main_frame",
+                "sub_frame",
+                "stylesheet",
+                "script",
+                "image",
+                "font",
+                "object",
+                "xmlhttprequest",
+                "ping",
+                "csp_report",
+                "media",
+                "websocket",
+                "other"]
             }
         },
     ];
